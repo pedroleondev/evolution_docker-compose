@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  n8n:
+    container_name: n8n-1
+    image: n8nio/n8n:latest
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - WEBHOOK_URL=https://6498-2804-8aa4-e022-d700-99ca-3de-bf02-ee8a.ngrok-free.app
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=leon
+      - N8N_BASIC_AUTH_PASSWORD=1233
+      - DB_TYPE=mysqldb
+      - DB_MYSQLDB_HOST=mysql
+      - DB_MYSQLDB_PORT=3306
+      - DB_MYSQLDB_DATABASE=n8n
+      - DB_MYSQLDB_USER=root
+      - DB_MYSQLDB_PASSWORD=root
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
+      - LOG_LEVEL=debug
+      - DB_SKIP_MIGRATIONS=AddStatsColumnsToTestRun1736172058779
+    volumes:
+      - ./.n8n:/home/node/.n8n
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - shared-net
+
+  mysql:
+    container_name: mysql-1
+    image: mysql:8.0.40
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: n8n
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shared-net
+
+volumes:
+  mysql-data:
+
+networks:
+  shared-net:
+    driver: bridge

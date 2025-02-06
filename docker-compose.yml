@@ -1,0 +1,84 @@
+version: '3.9'
+
+services:
+  evolution-api:
+    container_name: evolution_api
+    image: atendai/evolution-api:latest
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379/6
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - CACHE_REDIS_SAVE_INSTANCES=false
+      - CACHE_LOCAL_ENABLED=false
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://postgres:postgres@postgres:5432/evolution
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution_exchange
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - DATABASE_SAVE_DATA_LABELS=true
+      - DATABASE_SAVE_DATA_HISTORIC=true
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - evolution-net
+
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=evolution
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - evolution-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - evolution-net
+    command: >
+      redis-server --port 6379 --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  evolution_instances:
+  postgres_data:
+  redis_data:
+
+networks:
+  evolution-net:
+    driver: bridge
